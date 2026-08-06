@@ -1,0 +1,2 @@
+Message written before move assignment
+Message written after move assignment
