@@ -5,11 +5,15 @@
 #include <string>
 #include "SensorBuffer.hpp"
 #include <queue>
+#include "ThreadSafeLapQueue.hpp"
+#include <thread>
 
 
 void LogTests(); 
+void CodecTests();
 
- void CodecTests();
+
+
 
 int main()
 {      
@@ -19,8 +23,43 @@ int main()
 
         StintLog Log;
         SensorBuffer<float, 5> recentLapTimes;
-        std::queue<LapRecord> pendingLaps;  
+        ThreadSafeLapQueue pendingLaps;
 
+        //CONSUMER THREAD
+        std::thread consumerThread([&]()
+        {
+            while (true)
+            {
+                LapRecord reading = pendingLaps.waitAndPop();
+
+                if (reading.lapNumber == -1)
+                {
+                    break;
+                }
+
+                const bool added = Log.add_laps(
+                    reading.lapNumber,
+                    reading.lapTime,
+                    reading.fuelUsed,
+                    reading.tireTemp
+                );
+
+                if (!added)
+                {
+                    std::cerr << "Could not store lap\n";
+                    continue;
+                }
+
+                recentLapTimes.add(reading.lapTime);
+
+                std::cout << "Lap "
+                          << reading.lapNumber
+                          << " processed.\n";
+            }
+        });
+
+
+    //MAIN THREAD
         bool recording = true;
 
         while(recording)
@@ -76,32 +115,7 @@ int main()
             }
         }
 
-    while (!pendingLaps.empty())
-        {
-            LapRecord reading =
-                pendingLaps.front();
 
-            pendingLaps.pop();
-
-            const bool added = Log.add_laps(
-                reading.lapNumber,
-                reading.lapTime,
-                reading.fuelUsed,
-                reading.tireTemp);
-
-            if (!added)
-            {
-                std::cerr << "Could not store lap \n";
-                continue;
-            }
-            
-            recentLapTimes.add(reading.lapTime);
-
-            std::cout << "Lap "
-                << reading.lapNumber
-                << " processed.\n";
-                            
-        }        
         
     for (std::size_t index=0; index < recentLapTimes.size(); index++)
     {   

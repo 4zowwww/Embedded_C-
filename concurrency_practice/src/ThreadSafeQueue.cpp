@@ -1,47 +1,76 @@
-#include <iostream>
-#include <thread>
-#include <chrono>
-#include <mutex>
-#include <atomic>
-#include <queue>
-#include <condition_variable>
 #include "ThreadSafeQueue.hpp"
 
+#include <iostream>
+#include <chrono>
+#include <thread>
 
-
-
-std::queue<int> values;
-std::mutex mutex;
-std::condition_variable condition;
-
-void ThreadSafeQueue::push(int value)
+void ThreadSafeQueue::producer(int id)
+{
+    for (int i = 1; i<= 5; ++i)
     {
-        {
-            std::lock_guard<std::mutex> lock(mutex);
+        int value = id * 100 + i;
 
-            values.push(value);
+        {
+            std::unique_lock<std::mutex> lock(mutex_);
+
+            spaceAvailable_.wait(
+                lock,
+                [this]
+                {
+                    return pendingValues_.size() < capacity_;
+                }
+            );
+            pendingValues_.push(value);
         }
 
-        condition.notify_one();
+        condition_.notify_one();
+    }
+}
+
+void ThreadSafeQueue::consumer(int id)
+{
+    while (true)
+    {
+        int value;
+
+        {
+            std::unique_lock<std::mutex> lock(mutex_);
+
+            condition_.wait(
+                lock,
+                [this]
+                {
+                    return closed_ || !pendingValues_.empty();
+                }
+            );
+
+            if (closed_ && pendingValues_.empty())
+            {
+                break;
+            }
+
+            value = pendingValues_.front();
+            pendingValues_.pop();
+        }
+
+        spaceAvailable_.notify_one();
+
+        std::this_thread::sleep_for(
+        std::chrono::milliseconds(500)
+        );
+
+        std::cout << "Consumer " << id
+          << " consumed: " << value << '\n';
+    }
+}
+
+void ThreadSafeQueue::close() {
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+
+        closed_ = true;
     }
 
-int ThreadSafeQueue::waitAndPop()
-    {   
-        int copy_values;
+    condition_.notify_all();
+}
 
-        {
-        std::unique_lock<std::mutex> lock(mutex);
-
-        condition.wait(
-            lock,
-            [this]
-            {
-                return !values.empty();
-            });
-        }
-        
-        copy_values = values.front();
-        values.pop();
-        
-        return copy_values;
-    }    
