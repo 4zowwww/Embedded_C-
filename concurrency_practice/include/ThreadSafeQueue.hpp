@@ -1,24 +1,23 @@
-#include <iostream>
-#include <thread>
-#include <chrono>
-#include <mutex>
-#include <atomic>
-#include <queue>
-#include <condition_variable>
 #pragma once
 
-
+#include <condition_variable>
+#include <mutex>
+#include <queue>
+#include <cstddef>
 
 class ThreadSafeQueue
 {
-private:
-    std::queue<int> values;
-    std::mutex mutex;
-    std::condition_variable condition;
-
 public:
-    void push(int value);
+    void producer(int id);
+    void consumer(int id);
+    void close();
+    void worker();
 
-    int waitAndPop();
-
+private:
+    std::queue<int> pendingValues_;
+    std::mutex mutex_;
+    std::condition_variable condition_;
+    std::condition_variable spaceAvailable_;
+    bool closed_ = false;
+    static constexpr std::size_t capacity_ = 5;
 };

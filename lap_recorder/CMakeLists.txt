@@ -11,7 +11,9 @@ add_executable(app
     src/LapTelemetryCodec.cpp
     tests/StintLogTests.cpp
     tests/LapTelemetryCodecTests.cpp
-    )
+        src/ThreadSafeLapQueue.cpp
+
+)
 
 target_include_directories(app PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/include"
