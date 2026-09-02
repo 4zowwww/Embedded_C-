@@ -1,8 +1,10 @@
 #include "PeriodicTimer.h"
 
 
-PeriodicTimer::PeriodicTimer(Clock::duration taskPeriod)
+PeriodicTimer::PeriodicTimer(Clock::duration taskPeriod, OverrunPolicy overrunPolicy)
     : period(taskPeriod),
-      scheduledStart(Clock::now())
+      scheduledStart(Clock::now()),
+      policy(overrunPolicy)
 {
 }
+
