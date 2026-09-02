@@ -1,15 +1,8 @@
 #pragma once
 #include <chrono>
 #include <thread>
-
-struct TimingStats
-{
-    std::chrono::microseconds jitter;
-    std::chrono::microseconds execution;
-    std::chrono::microseconds slack;
-
-    bool deadlineMissed;
-};
+#include "TimingStats.h"
+#include "OverrunPolicy.h"
 
 class PeriodicTimer {
 
@@ -21,9 +14,11 @@ class PeriodicTimer {
         Clock::time_point scheduledStart;
 
 
+        OverrunPolicy policy;
+
 
     public:
-        explicit PeriodicTimer(Clock::duration taskPeriod);
+        explicit PeriodicTimer(Clock::duration taskPeriod, OverrunPolicy policy);
 
         template<typename Task>
         TimingStats runCycle(Task&& task)
@@ -61,19 +56,42 @@ class PeriodicTimer {
             bool missed =
                 finish > deadline;
 
+            bool timingFault =
+                missed && policy == OverrunPolicy::Fault;
 
-            std::this_thread::sleep_until(deadline);
 
-            scheduledStart += period;
+            if (missed && policy == OverrunPolicy::Resync)
+            {
+                scheduledStart = finish;
+            }
+            else if (missed && policy == OverrunPolicy::Fault)
+            {
+                scheduledStart = finish;
+            }
+            else
+            {
+                auto spinStart = deadline - std::chrono::microseconds(200);
+
+                std::this_thread::sleep_until(spinStart);
+
+                while (Clock::now() < deadline)
+                {
+                    // spin
+                }
+
+                scheduledStart += period;
+            }
 
 
             return {
                 jitter,
                 execution,
                 slack,
-                missed
+                missed,
+                timingFault
             };
         }
+
 
 };
 

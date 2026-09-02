@@ -19,6 +19,13 @@ add_executable(app
         RealTime/main.cpp
         RealTime/src/PeriodicTimer.cpp
         RealTime/Include/PeriodicTimer.h
+        RealTime/Include/TimingMonitor.h
+        RealTime/src/TimingMonitor.cpp
+        RealTime/Include/TimingStats.h
+        RealTime/Include/OverrunPolicy.h
+        RealTime/Include/Watchdog.h
+        RealTime/src/Watchdog.cpp
+        RealTime/src/Watchdog.cpp
 )
 
 target_include_directories(app PRIVATE include)
